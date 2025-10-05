@@ -1,5 +1,9 @@
 # Генератор договоров для бухгалтерии
 
+🌐 **Живой сайт**: https://academintellekt-cmd.github.io/DocsX/
+
+[![Deploy to GitHub Pages](https://github.com/academintellekt-cmd/DocsX/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)](https://academintellekt-cmd.github.io/DocsX/)
+
 Веб-приложение для создания и редактирования договоров с поддержкой экспорта в различные форматы.
 
 ## Возможности
