@@ -322,7 +322,7 @@ To pass the result of works to the Customer;</textarea>
                     </div>
                     
                     <button type="button" class="btn download-btn" onclick="downloadContractNew()">💾 Скачать договор (DOCX)</button>
-                    <button type="button" class="btn download-btn" onclick="testDocxExport()">🧪 Тест DOCX</button>
+                    <button type="button" class="btn download-btn" onclick="downloadHTML()">🌐 Экспорт в HTML</button>
                 </form>
             </div>
             
@@ -1262,37 +1262,49 @@ To pass the result of works to the Customer;</textarea>
             max-width: 800px; 
             margin: 0 auto; 
             padding: 20px;
+            background-color: white;
+            color: black;
         }
-        .highlight { 
-            background-color: #ffeb3b; 
-            padding: 2px 4px; 
-            border-radius: 3px; 
+        /* Убираем все желтые выделения */
+        .highlight, 
+        [style*="background-color: yellow"],
+        [style*="background: yellow"],
+        [style*="background-color: #ffeb3b"],
+        [style*="background: #ffeb3b"] { 
+            background-color: transparent !important; 
+            padding: 0; 
+            border-radius: 0; 
         }
         h3 { 
             margin-top: 20px; 
             margin-bottom: 10px; 
+            color: black;
         }
         p { 
             margin-bottom: 10px; 
             text-align: justify; 
+            color: black;
         }
         table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
-            border: 2px solid #000;
+            border: 1px solid #333;
         }
         table th, table td {
-            border: 1px solid #000;
+            border: 1px solid #333;
             padding: 8px;
             text-align: left;
+            background-color: white;
+            color: black;
         }
         table th {
             background-color: #f5f5f5;
             font-weight: bold;
+            color: black;
         }
         @media print {
-            body { margin: 0; padding: 15px; }
+            body { margin: 0; padding: 15px; background-color: white; color: black; }
         }
     </style>
 </head>
@@ -2154,60 +2166,6 @@ ___________________/Petrenko V.A.\\par
                 
                 // Fallback к HTML
                 downloadHTML();
-            }
-        }
-
-        // Простая тестовая функция для проверки DOCX
-        async function testDocxExport() {
-            try {
-                console.log('Testing DOCX export...');
-                
-                // Проверяем доступность docx библиотеки
-                if (typeof docx === 'undefined') {
-                    console.error('DOCX library not loaded, attempting to load...');
-                    await loadDocxLibrary();
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    if (typeof docx === 'undefined') {
-                        throw new Error('Failed to load docx library');
-                    }
-                }
-                
-                const { Document, Packer, Paragraph, HeadingLevel } = docx;
-                
-                // Создаем простой тестовый документ
-                const doc = new Document({
-                    sections: [{
-                        properties: {},
-                        children: [
-                            new Paragraph({
-                                text: "Test Document",
-                                heading: HeadingLevel.TITLE,
-                            }),
-                            new Paragraph({
-                                text: "This is a test document to verify DOCX functionality.",
-                            }),
-                            new Paragraph({
-                                text: "If you can see this, DOCX export is working!",
-                            })
-                        ]
-                    }]
-                });
-                
-                console.log('Creating test DOCX document...');
-                const blob = await Packer.toBlob(doc);
-                console.log('Test DOCX blob created, size:', blob.size);
-                
-                if (typeof saveAs === 'undefined') {
-                    throw new Error('FileSaver.js library not loaded');
-                }
-                
-                saveAs(blob, 'test_document.docx');
-                console.log('Test DOCX file downloaded successfully!');
-                alert('Test DOCX file created successfully!');
-                
-            } catch (error) {
-                console.error('Test DOCX creation error:', error);
-                alert('Test DOCX creation failed: ' + error.message);
             }
         }
 
