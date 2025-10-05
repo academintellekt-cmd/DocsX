@@ -16,11 +16,8 @@
                 console.warn('DOCX library not loaded, trying alternative source...');
                 const script = document.createElement('script');
                 script.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.min.js';
-                script.onload = () => console.log('DOCX library loaded from cdnjs');
                 script.onerror = () => console.error('Failed to load DOCX from cdnjs');
                 document.head.appendChild(script);
-            } else {
-                console.log('DOCX library loaded successfully');
             }
         });
     </script>
@@ -187,7 +184,7 @@
         }
 
         .highlight {
-            background-color: transparent;
+            background-color: #ffff00;
             color: #000000;
             padding: 2px 4px;
             border-radius: 3px;
@@ -422,6 +419,27 @@ To pass the result of works to the Customer;</textarea>
             return result;
         }
 
+        // Общая функция для получения данных формы
+        function getFormData() {
+            const form = document.getElementById('contractForm');
+            const formData = new FormData(form);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+            return data;
+        }
+
+        // Общая функция для форматирования даты договора
+        function formatAgreementDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
         // Устанавливаем текущую дату по умолчанию
         document.addEventListener('DOMContentLoaded', function() {
             const today = new Date();
@@ -623,22 +641,10 @@ To pass the result of works to the Customer;</textarea>
         }
 
         function generateContract() {
-            const form = document.getElementById('contractForm');
-            const formData = new FormData(form);
-            
-            // Получаем все значения из формы
-            const data = {};
-            for (let [key, value] of formData.entries()) {
-                data[key] = value;
-            }
+            const data = getFormData();
 
             // Форматируем дату
-            const date = new Date(data.agreementDate);
-            const formattedDate = date.toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric'
-            });
+            const formattedDate = formatAgreementDate(data.agreementDate);
 
             // Генерируем полный HTML договора согласно оригинальному шаблону
             const contractHTML = `
@@ -823,22 +829,10 @@ To pass the result of works to the Customer;</textarea>
         // Функция для создания HTML файла
         function downloadHTML() {
             try {
-                console.log('Creating HTML file...');
-                
-                const form = document.getElementById('contractForm');
-                const formData = new FormData(form);
-                const data = {};
-                for (let [key, value] of formData.entries()) {
-                    data[key] = value;
-                }
+                const data = getFormData();
 
                 // Форматируем дату
-                const date = new Date(data.agreementDate);
-                const formattedDate = date.toLocaleDateString('en-GB', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric'
-                });
+                const formattedDate = formatAgreementDate(data.agreementDate);
 
                 // Получаем содержимое договора
                 const contractContent = document.getElementById('contractPreview').innerHTML;
@@ -917,7 +911,6 @@ To pass the result of works to the Customer;</textarea>
                     throw new Error('FileSaver.js library not loaded');
                 }
                 saveAs(blob, fileName);
-                console.log('HTML file created successfully!');
                 
             } catch (error) {
                 console.error('HTML creation error:', error);
@@ -928,14 +921,12 @@ To pass the result of works to the Customer;</textarea>
         // Функция для загрузки DOCX библиотеки
         async function loadDocxLibrary() {
             try {
-                console.log('Loading DOCX library...');
                 
                 // Создаем script элемент
                 const script = document.createElement('script');
                 script.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.min.js';
                 script.onload = () => {
-                    console.log('DOCX library loaded successfully!');
-                    alert('DOCX library loaded! Try again.');
+                    // DOCX library loaded, user can try again
                 };
                 script.onerror = () => {
                     console.error('Failed to load DOCX library from cdnjs');
@@ -943,8 +934,7 @@ To pass the result of works to the Customer;</textarea>
                     const altScript = document.createElement('script');
                     altScript.src = 'https://unpkg.com/docx@7.8.2/build/index.js';
                     altScript.onload = () => {
-                        console.log('DOCX library loaded from unpkg!');
-                        alert('DOCX library loaded from alternative source! Try again.');
+                        // DOCX library loaded from alternative source
                     };
                     altScript.onerror = () => {
                         console.error('Failed to load DOCX library from all sources');
@@ -965,20 +955,10 @@ To pass the result of works to the Customer;</textarea>
 
         // Функция для скачивания договора в формате DOCX с полным содержимым
         async function downloadContractNew() {
-            const form = document.getElementById('contractForm');
-            const formData = new FormData(form);
-            const data = {};
-            for (let [key, value] of formData.entries()) {
-                data[key] = value;
-            }
+            const data = getFormData();
 
             // Форматируем дату
-            const date = new Date(data.agreementDate);
-            const formattedDate = date.toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric'
-            });
+            const formattedDate = formatAgreementDate(data.agreementDate);
 
             try {
                 // Проверяем доступность docx библиотеки
@@ -991,8 +971,6 @@ To pass the result of works to the Customer;</textarea>
                         throw new Error('Failed to load docx library');
                     }
                 }
-                
-                console.log('docx library loaded successfully');
                 
                 // Создаем DOCX документ без выделений
                 const { Document, Packer, Paragraph, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, PageBreak, TextRun, BorderStyle, ImageRun, HorizontalPositionRelativeFrom, HorizontalPositionAlign, VerticalPositionRelativeFrom, VerticalPositionAlign } = docx;
@@ -1379,10 +1357,10 @@ To pass the result of works to the Customer;</textarea>
                                             children: [
                                                 new TableCell({
                                                     children: [
-                                                        new Paragraph({
+                            new Paragraph({
                                                             children: [
                                                                 new TextRun({
-                                                                    text: "___________________/Petrenko V.A.",
+                                text: "___________________/Petrenko V.A.",
                                                                     size: 24,
                                                                 }),
                                                                 new ImageRun({
@@ -1472,10 +1450,10 @@ To pass the result of works to the Customer;</textarea>
                                             children: [
                                                 new TableCell({
                                                     children: [
-                                                        new Paragraph({
+                            new Paragraph({
                                                             children: [
                                                                 new TextRun({
-                                                                    text: "___________________/Petrenko V.A.",
+                                text: "___________________/Petrenko V.A.",
                                                                     size: 24,
                                                                 }),
                                                                 new ImageRun({
@@ -1537,9 +1515,7 @@ To pass the result of works to the Customer;</textarea>
                 const price = parseInt(data.contractPrice) || 0;
                 const fileName = `${data.agreementNumber}_${data.customerName.replace(/[^a-zA-Z0-9]/g, '_')}_$${price}_${data.currency}.docx`;
                 
-                console.log('Creating DOCX document...');
                 const blob = await Packer.toBlob(doc);
-                console.log('DOCX blob created, size:', blob.size);
                 
                 // Скачиваем файл
                 // Проверяем доступность saveAs
@@ -1547,7 +1523,6 @@ To pass the result of works to the Customer;</textarea>
                     throw new Error('FileSaver.js library not loaded');
                 }
                 saveAs(blob, fileName);
-                console.log('DOCX file downloaded successfully!');
                 
             } catch (error) {
                 console.error('DOCX creation error:', error);
