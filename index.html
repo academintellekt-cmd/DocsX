@@ -349,7 +349,8 @@ To pass the result of works to the Customer;</textarea>
 
         // Функция форматирования чисел без разделителей тысяч
         function formatNumber(num) {
-            return num.toString();
+            // Форматируем число в американском стиле с запятыми
+            return num.toLocaleString('en-US');
         }
 
         // Функция конвертации чисел в слова (до 500000)
@@ -1214,7 +1215,7 @@ To pass the result of works to the Customer;</textarea>
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-                a.download = `${data.agreementNumber}_${data.customerName.replace(/[^a-zA-Z0-9]/g, '_')}_${data.contractPrice}$${data.currency}.html`;
+                a.download = `${data.agreementNumber}_${data.customerName.replace(/[^a-zA-Z0-9]/g, '_')}_${parseInt(data.contractPrice) || 0}$${data.currency}.html`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1301,7 +1302,7 @@ To pass the result of works to the Customer;</textarea>
 
                 // Создаем blob и скачиваем
                 const blob = new Blob([fullHTML], { type: 'text/html; charset=utf-8' });
-                const fileName = `${data.agreementNumber}_${data.customerName.replace(/[^a-zA-Z0-9]/g, '_')}_${data.contractPrice}$${data.currency}.html`;
+                const fileName = `${data.agreementNumber}_${data.customerName.replace(/[^a-zA-Z0-9]/g, '_')}_${parseInt(data.contractPrice) || 0}$${data.currency}.html`;
                 
                 // Проверяем доступность saveAs
                 if (typeof saveAs === 'undefined') {
@@ -1666,7 +1667,7 @@ ___________________/Petrenko V.A.\\par
 
                 // Создаем blob и скачиваем
                 const blob = new Blob([rtfContent], { type: 'application/rtf; charset=utf-8' });
-                const fileName = `${data.agreementNumber}_${data.customerName.replace(/[^a-zA-Z0-9]/g, '_')}_${data.contractPrice}$${data.currency}.rtf`;
+                const fileName = `${data.agreementNumber}_${data.customerName.replace(/[^a-zA-Z0-9]/g, '_')}_${parseInt(data.contractPrice) || 0}$${data.currency}.rtf`;
                 
                 // Проверяем доступность saveAs
                 if (typeof saveAs === 'undefined') {
