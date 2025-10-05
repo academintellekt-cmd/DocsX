@@ -173,7 +173,7 @@ function initializeForm() {
 }
 
 // Функция для загрузки и восстановления всех данных
-function restoreAllData() {
+async function restoreAllData() {
     // Загружаем данные формы
     const formData = loadFormData();
     populateForm(formData);
@@ -189,19 +189,12 @@ function restoreAllData() {
         }
     }
     
-    // Восстанавливаем подпись
-    const signature = loadSignature();
-    if (signature) {
-        window.loadedSignature = signature;
-        const preview = document.getElementById('signaturePreview');
-        if (preview) {
-            preview.style.display = 'block';
-            const img = document.getElementById('signatureImg');
-            if (img) {
-                img.src = signature;
-            }
-        }
-    }
+    // Всегда загружаем подпись заново для обновления
+    console.log('🔄 Forcing signature reload to update...');
+    // Очищаем старую подпись из localStorage
+    localStorage.removeItem('loadedSignature');
+    // Загружаем новую подпись
+    await loadDefaultSignatureWithPromise();
     
     // Восстанавливаем настройки инвойса
     const savedTermOfDelivery = localStorage.getItem('termOfDelivery');
@@ -251,6 +244,138 @@ function saveAllData() {
     console.log('All data saved to localStorage');
 }
 
+// Функция для принудительного обновления подписи (очистка кэша)
+function clearSignatureCache() {
+    // Очищаем localStorage
+    localStorage.removeItem('loadedSignature');
+    // Очищаем глобальную переменную
+    window.loadedSignature = null;
+    
+    // Перезагружаем страницу для полного обновления
+    console.log('🔄 Очистка кэша подписи, перезагрузка страницы...');
+    setTimeout(() => {
+        location.reload();
+    }, 100);
+}
+
+// Автоматическая загрузка подписи из файла 1.png (асинхронная версия)
+async function loadDefaultSignatureWithPromise() {
+    try {
+        const timestamp = Date.now();
+        const response = await fetch(`./1.png?v=${timestamp}`);
+        if (!response.ok) {
+            throw new Error('File not found');
+        }
+        const blob = await response.blob();
+        
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Data = e.target.result;
+                window.loadedSignature = base64Data;
+                saveSignature(base64Data);
+                
+                // Обновляем превью если элемент существует
+                const signaturePreview = document.getElementById('signaturePreview');
+                if (signaturePreview) {
+                    signaturePreview.style.display = 'block';
+                    signaturePreview.innerHTML = `<img src="${base64Data}" style="max-width: 200px; max-height: 100px; border: 1px solid #ddd; border-radius: 4px;">`;
+                }
+                
+                console.log('✅ Signature updated successfully');
+                
+                // Подпись загружена, генерация будет вызвана после restoreAllData
+                
+                resolve(base64Data);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.warn('❌ Could not load default signature:', error);
+        // Fallback: показываем сообщение пользователю
+        const signaturePreview = document.getElementById('signaturePreview');
+        if (signaturePreview) {
+            signaturePreview.style.display = 'block';
+            signaturePreview.innerHTML = '<p style="color: #ff6b6b;">⚠️ Не удалось загрузить подпись по умолчанию. Пожалуйста, загрузите подпись вручную.</p>';
+        }
+        return null;
+    }
+}
+
+// Автоматическая загрузка подписи из файла 1.png
+function loadDefaultSignature() {
+    try {
+        // Создаем скрытый input для загрузки файла
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.png';
+        input.style.display = 'none';
+        
+        // Программно выбираем файл 1.png
+        const fileInput = input;
+        
+        // Пытаемся загрузить файл через File API с версионированием для обхода кэша
+        const timestamp = Date.now();
+        fetch(`./1.png?v=${timestamp}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('File not found');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Data = e.target.result;
+                    window.loadedSignature = base64Data;
+                    saveSignature(base64Data);
+                    
+                    // Обновляем превью если элемент существует
+                    const signaturePreview = document.getElementById('signaturePreview');
+                    if (signaturePreview) {
+                        signaturePreview.style.display = 'block';
+                        signaturePreview.innerHTML = `<img src="${base64Data}" style="max-width: 200px; max-height: 100px; border: 1px solid #ddd; border-radius: 4px;">`;
+                    }
+                    
+                    console.log('✅ Default signature loaded automatically from 1.png');
+                    console.log('🔍 Signature data length:', base64Data.length);
+                    
+                    // Перегенерируем документ после загрузки подписи с небольшой задержкой
+                    setTimeout(() => {
+                        if (typeof window.generateContract === 'function') {
+                            console.log('🔄 Calling generateContract...');
+                            window.generateContract();
+                        } else {
+                            console.log('❌ generateContract function not found');
+                        }
+                        if (typeof window.generateInvoice === 'function') {
+                            console.log('🔄 Calling generateInvoice...');
+                            window.generateInvoice();
+                        } else {
+                            console.log('❌ generateInvoice function not found');
+                        }
+                    }, 100);
+                };
+                reader.onerror = function(error) {
+                    console.warn('❌ Error reading signature file:', error);
+                };
+                reader.readAsDataURL(blob);
+            })
+            .catch(error => {
+                console.warn('❌ Could not load default signature:', error);
+                // Fallback: показываем сообщение пользователю
+                const signaturePreview = document.getElementById('signaturePreview');
+                if (signaturePreview) {
+                    signaturePreview.style.display = 'block';
+                    signaturePreview.innerHTML = '<p style="color: #ff6b6b;">⚠️ Не удалось загрузить подпись по умолчанию. Пожалуйста, загрузите подпись вручную.</p>';
+                }
+            });
+    } catch (error) {
+        console.warn('❌ Error in loadDefaultSignature:', error);
+    }
+}
+
 // Экспорт функций для использования в других файлах
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -269,6 +394,7 @@ if (typeof module !== 'undefined' && module.exports) {
         loadSignature,
         initializeForm,
         restoreAllData,
-        saveAllData
+        saveAllData,
+        loadDefaultSignature
     };
 }
