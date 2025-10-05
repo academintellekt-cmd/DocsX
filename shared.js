@@ -189,12 +189,32 @@ async function restoreAllData() {
         }
     }
     
-    // Всегда загружаем подпись заново для обновления
-    console.log('🔄 Forcing signature reload to update...');
-    // Очищаем старую подпись из localStorage
-    localStorage.removeItem('loadedSignature');
-    // Загружаем новую подпись
-    await loadDefaultSignatureWithPromise();
+    // Загружаем подпись: сначала из localStorage, если нет - то по умолчанию
+    const savedSignature = loadSignature();
+    if (savedSignature) {
+        console.log('📋 Loading saved signature from localStorage');
+        window.loadedSignature = savedSignature;
+        const preview = document.getElementById('signaturePreview');
+        if (preview) {
+            preview.style.display = 'block';
+            // Показываем подпись в превью слева с высотой 70px и пропорциональной шириной
+            preview.innerHTML = `<img id="signatureImg" src="${savedSignature}" style="height: 70px; width: auto; border: 1px solid #ddd; border-radius: 4px;">`;
+            
+            // Показываем контролы размера если элемент существует
+            const signatureControls = document.getElementById('signatureControls');
+            if (signatureControls) {
+                signatureControls.style.display = 'block';
+            }
+            
+            console.log('✅ Signature preview updated from localStorage');
+        } else {
+            console.warn('⚠️ signaturePreview element not found');
+        }
+    } else {
+        console.log('🔄 No saved signature, loading default from 1.png...');
+        await loadDefaultSignatureWithPromise();
+    }
+    console.log('🔧 Final window.loadedSignature:', window.loadedSignature ? 'SET' : 'NULL');
     
     // Восстанавливаем настройки инвойса
     const savedTermOfDelivery = localStorage.getItem('termOfDelivery');
@@ -262,9 +282,10 @@ function clearSignatureCache() {
 async function loadDefaultSignatureWithPromise() {
     try {
         const timestamp = Date.now();
-        const response = await fetch(`./1.png?v=${timestamp}`);
+        const url = `./1.png?v=${timestamp}`;
+        const response = await fetch(url);
         if (!response.ok) {
-            throw new Error('File not found');
+            throw new Error(`File not found: ${response.status} ${response.statusText}`);
         }
         const blob = await response.blob();
         
@@ -279,12 +300,17 @@ async function loadDefaultSignatureWithPromise() {
                 const signaturePreview = document.getElementById('signaturePreview');
                 if (signaturePreview) {
                     signaturePreview.style.display = 'block';
-                    signaturePreview.innerHTML = `<img src="${base64Data}" style="max-width: 200px; max-height: 100px; border: 1px solid #ddd; border-radius: 4px;">`;
+                    // Показываем подпись в превью слева с высотой 70px и пропорциональной шириной
+                    signaturePreview.innerHTML = `<img id="signatureImg" src="${base64Data}" style="height: 70px; width: auto; border: 1px solid #ddd; border-radius: 4px;">`;
+                    
+                    // Показываем контролы размера если элемент существует
+                    const signatureControls = document.getElementById('signatureControls');
+                    if (signatureControls) {
+                        signatureControls.style.display = 'block';
+                    }
                 }
                 
-                console.log('✅ Signature updated successfully');
-                
-                // Подпись загружена, генерация будет вызвана после restoreAllData
+                console.log('✅ Default signature loaded from 1.png');
                 
                 resolve(base64Data);
             };
@@ -335,7 +361,14 @@ function loadDefaultSignature() {
                     const signaturePreview = document.getElementById('signaturePreview');
                     if (signaturePreview) {
                         signaturePreview.style.display = 'block';
-                        signaturePreview.innerHTML = `<img src="${base64Data}" style="max-width: 200px; max-height: 100px; border: 1px solid #ddd; border-radius: 4px;">`;
+                        // Показываем подпись в превью слева с высотой 70px и пропорциональной шириной
+                        signaturePreview.innerHTML = `<img id="signatureImg" src="${base64Data}" style="height: 70px; width: auto; border: 1px solid #ddd; border-radius: 4px;">`;
+                        
+                        // Показываем контролы размера если элемент существует
+                        const signatureControls = document.getElementById('signatureControls');
+                        if (signatureControls) {
+                            signatureControls.style.display = 'block';
+                        }
                     }
                     
                     console.log('✅ Default signature loaded automatically from 1.png');

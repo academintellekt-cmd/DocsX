@@ -7,22 +7,11 @@
     <link rel="stylesheet" href="styles.css">
     
     <!-- docx.js для создания DOCX файлов -->
-    <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
     
-    <script>
-        // Проверяем загрузку docx библиотеки при старте
-        window.addEventListener('load', function() {
-            if (typeof docx === 'undefined') {
-                console.warn('DOCX library not loaded, trying alternative source...');
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.min.js';
-                script.onerror = () => console.error('Failed to load DOCX from cdnjs');
-                document.head.appendChild(script);
-            }
-        });
-    </script>
     <!-- FileSaver.js для сохранения файлов -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- DOCX библиотека -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -74,17 +63,46 @@
 
                     <div class="form-group">
                         <label for="signatureImage">Подпись (PNG):</label>
-                        <input type="file" id="signatureImage" name="signatureImage" accept=".png" onchange="loadSignature()">
+                        <input type="file" id="signatureImage" name="signatureImage" accept=".png" onchange="loadSignatureFile()">
                         <small style="color: #666; font-size: 12px;">Загрузите изображение подписи в формате PNG</small>
                         <button type="button" onclick="clearSignatureCache()" style="margin-top: 5px; padding: 5px 10px; background: #ff6b6b; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">🔄 Обновить подпись</button>
                         <div id="signaturePreview" style="margin-top: 10px; display: none;">
-                            <img id="signatureImg" style="max-width: 200px; max-height: 100px; border: 1px solid #ccc;">
+                            <img id="signatureImg" style="height: 70px; width: auto; border: 1px solid #ccc;">
+                        </div>
+                        
+                        <!-- Контролы размера и позиционирования подписи -->
+                        <div id="signatureControls" style="margin-top: 10px; display: none;">
+                            <label style="font-size: 14px; font-weight: bold;">Настройки подписи:</label>
+                            <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <label style="font-size: 12px;">Ширина (px):</label>
+                                    <input type="number" id="signatureWidth" value="200" min="50" max="500" step="10" style="width: 80px; padding: 5px; border: 1px solid #ddd; border-radius: 3px;" onchange="updateSignatureSize()" oninput="updateSignatureSize()">
+                                </div>
+                                
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <label style="font-size: 12px;">Высота (px):</label>
+                                    <input type="number" id="signatureHeight" value="100" min="30" max="300" step="10" style="width: 80px; padding: 5px; border: 1px solid #ddd; border-radius: 3px;" onchange="updateSignatureSize()" oninput="updateSignatureSize()">
+                                </div>
+                                
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <label style="font-size: 12px;">Вверх/Вниз (px):</label>
+                                    <input type="number" id="signatureOffsetY" value="0" min="-100" max="100" step="10" style="width: 80px; padding: 5px; border: 1px solid #ddd; border-radius: 3px;" onchange="updateSignatureSize()" oninput="updateSignatureSize()">
+                                </div>
+                                
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <label style="font-size: 12px;">Влево/Вправо (px):</label>
+                                    <input type="number" id="signatureOffsetX" value="0" min="-100" max="100" step="10" style="width: 80px; padding: 5px; border: 1px solid #ddd; border-radius: 3px;" onchange="updateSignatureSize()" oninput="updateSignatureSize()">
+                                </div>
+                                
+                                <button type="button" onclick="resetSignatureSize()" style="padding: 5px 10px; background: #ff6b6b; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">Сброс</button>
+                            </div>
                         </div>
                     </div>
 
                     
                     <button type="button" class="btn download-btn" onclick="downloadInvoiceNew()">💾 Скачать инвойс (DOCX)</button>
                     <button type="button" class="btn download-btn" onclick="downloadInvoiceHTML()">📄 Скачать инвойс (HTML)</button>
+                    <button type="button" class="btn" onclick="generateInvoice()" style="background: #28a745; color: white; margin-top: 10px;">🔄 Тест предварительного просмотра</button>
                 </form>
             </div>
             
@@ -102,43 +120,125 @@
     
     <script>
 
-        // Функция для загрузки подписи
-        function loadSignature() {
+        // Функция для загрузки подписи (локальная)
+        function loadSignatureFile() {
             const fileInput = document.getElementById('signatureImage');
             const file = fileInput.files[0];
             const preview = document.getElementById('signaturePreview');
-            const img = document.getElementById('signatureImg');
             
             if (file) {
                 if (file.type === 'image/png') {
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        // Сохраняем подпись для использования в договоре
-                        window.loadedSignature = e.target.result;
+                        const base64Data = e.target.result;
                         
-                        // Показываем превью
-                        img.src = e.target.result;
+                        // Сохраняем новую подпись
+                        window.loadedSignature = base64Data;
+                        saveSignature(base64Data);
+                        
+                        // Обновляем превью
                         preview.style.display = 'block';
+                        preview.innerHTML = `<img id="signatureImg" src="${base64Data}" style="height: 70px; width: auto; border: 1px solid #ccc;">`;
                         
-                        // Обновляем договор
+                        // Применяем сохраненные размеры
+                        applySignatureSize();
+                        
+                        // Показываем контролы размера
+                        const controls = document.getElementById('signatureControls');
+                        if (controls) {
+                            controls.style.display = 'block';
+                        }
+                        
+                        // Обновляем инвойс
                         generateInvoice();
                         saveAllData();
                     };
                     reader.readAsDataURL(file);
                 } else {
-                    alert('Vă rugăm să selectați un fișier în format PNG');
+                    alert('Пожалуйста, выберите файл в формате PNG');
                     fileInput.value = '';
                 }
             } else {
-                preview.style.display = 'none';
-                window.loadedSignature = null;
-                generateInvoice();
+                // Не сбрасываем подпись, оставляем текущую
             }
         }
 
-        window.generateInvoice = function generateInvoice() {
-            const data = getFormData();
+        function updateSignatureSize() {
+            console.log('🔄 updateSignatureSize called');
             
+            // Сохраняем размеры и смещения
+            const width = document.getElementById('signatureWidth').value;
+            const height = document.getElementById('signatureHeight').value;
+            const offsetY = document.getElementById('signatureOffsetY').value;
+            const offsetX = document.getElementById('signatureOffsetX').value;
+            console.log('📏 New dimensions:', width, 'x', height, 'offsetY:', offsetY, 'offsetX:', offsetX);
+            
+            localStorage.setItem('signatureWidth', width);
+            localStorage.setItem('signatureHeight', height);
+            localStorage.setItem('signatureOffsetY', offsetY);
+            localStorage.setItem('signatureOffsetX', offsetX);
+            
+            // НЕ обновляем превью подписи слева - только документ справа
+            console.log('✅ Settings saved, updating document preview only');
+            
+            // Обновляем инвойс
+            generateInvoice();
+        }
+
+        function applySignatureSize() {
+            console.log('🔧 applySignatureSize called');
+            
+            const width = localStorage.getItem('signatureWidth') || '200';
+            const height = localStorage.getItem('signatureHeight') || '100';
+            const offsetY = localStorage.getItem('signatureOffsetY') || '0';
+            const offsetX = localStorage.getItem('signatureOffsetX') || '0';
+            
+            // Обновляем значения в полях ввода
+            const widthInput = document.getElementById('signatureWidth');
+            const heightInput = document.getElementById('signatureHeight');
+            const offsetYInput = document.getElementById('signatureOffsetY');
+            const offsetXInput = document.getElementById('signatureOffsetX');
+            if (widthInput) widthInput.value = width;
+            if (heightInput) heightInput.value = height;
+            if (offsetYInput) offsetYInput.value = offsetY;
+            if (offsetXInput) offsetXInput.value = offsetX;
+            
+            // НЕ обновляем изображение в превью слева - только в документе справа
+            console.log('✅ Applied size to input fields only');
+        }
+
+        function resetSignatureSize() {
+            console.log('🔄 resetSignatureSize called');
+            
+            localStorage.removeItem('signatureWidth');
+            localStorage.removeItem('signatureHeight');
+            localStorage.removeItem('signatureOffsetY');
+            localStorage.removeItem('signatureOffsetX');
+            
+            const widthInput = document.getElementById('signatureWidth');
+            const heightInput = document.getElementById('signatureHeight');
+            const offsetYInput = document.getElementById('signatureOffsetY');
+            const offsetXInput = document.getElementById('signatureOffsetX');
+            if (widthInput) widthInput.value = '200';
+            if (heightInput) heightInput.value = '100';
+            if (offsetYInput) offsetYInput.value = '0';
+            if (offsetXInput) offsetXInput.value = '0';
+            
+            // НЕ обновляем превью подписи слева - только документ справа
+            console.log('✅ Settings reset to defaults');
+            
+            generateInvoice();
+        }
+
+        function generateInvoice() {
+            // Проверяем наличие элемента
+            const previewElement = document.getElementById('contractPreview');
+            if (!previewElement) {
+                console.error('❌ contractPreview element not found!');
+                return;
+            }
+            
+            const data = getFormData();
 
             // Форматируем дату
             const formattedDate = formatAgreementDate(data.agreementDate);
@@ -259,15 +359,15 @@
                     <p style="position: relative;">
                         Signature: &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; 
                         ${window.loadedSignature ? 
-                            `<img src="${window.loadedSignature}" class="signature-overlay" style="max-width: 200px; max-height: 100px;" />` : 
+                            `<img src="${window.loadedSignature}" class="signature-overlay" style="width: ${safeParseInt(localStorage.getItem('signatureWidth'), 200, 50, 500)}px; height: ${safeParseInt(localStorage.getItem('signatureHeight'), 150, 30, 300)}px; top: ${safeParseInt(localStorage.getItem('signatureOffsetY'), 0, -100, 100)}px; left: ${safeParseInt(localStorage.getItem('signatureOffsetX'), 0, -100, 100)}px;" />` : 
                             '<!-- NO SIGNATURE -->'
                         }
                     </p>
                 </div>
             `;
 
-            document.getElementById('contractPreview').innerHTML = invoiceHTML;
-        };
+            previewElement.innerHTML = invoiceHTML;
+        }
 
         // Функция для создания HTML файла инвойса
         function downloadInvoiceHTML() {
@@ -347,6 +447,46 @@
             const formattedDate = formatAgreementDate(data.agreementDate);
 
             try {
+                // Проверяем наличие подписи
+                if (!window.loadedSignature) {
+                    throw new Error('Signature not loaded. Please load a signature first.');
+                }
+
+                // Проверяем формат подписи
+                console.log('🔍 Signature format check:', {
+                    hasSignature: !!window.loadedSignature,
+                    isBase64: window.loadedSignature.includes(','),
+                    length: window.loadedSignature.length,
+                    signatureWidth: localStorage.getItem('signatureWidth'),
+                    signatureHeight: localStorage.getItem('signatureHeight'),
+                    signatureOffsetY: localStorage.getItem('signatureOffsetY'),
+                    signatureOffsetX: localStorage.getItem('signatureOffsetX')
+                });
+
+                // Проверяем base64 данные
+                let signatureData;
+                if (window.loadedSignature && window.loadedSignature.includes(',')) {
+                    signatureData = window.loadedSignature.split(',')[1];
+                    console.log('🔍 Base64 data length:', signatureData.length);
+                    console.log('🔍 Base64 data preview:', signatureData.substring(0, 50) + '...');
+                    
+                    // Проверяем что это валидный base64
+                    if (!signatureData || signatureData.length === 0) {
+                        console.error('❌ Empty base64 data');
+                        throw new Error('Empty signature data');
+                    }
+                    
+                    // Проверяем что строка содержит только валидные base64 символы
+                    const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+                    if (!base64Regex.test(signatureData)) {
+                        console.error('❌ Invalid base64 characters');
+                        throw new Error('Invalid base64 signature data');
+                    }
+                } else {
+                    console.error('❌ Invalid signature format - no base64 data found');
+                    throw new Error('Invalid signature format');
+                }
+
                 // Проверяем доступность docx библиотеки
                 if (typeof docx === 'undefined') {
                     console.error('DOCX library not loaded, attempting to load...');
@@ -358,7 +498,7 @@
                 }
                 
                 // Создаем DOCX документ
-                const { Document, Packer, Paragraph, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, PageBreak, TextRun, BorderStyle, ImageRun, HorizontalPositionRelativeFrom, HorizontalPositionAlign, VerticalPositionRelativeFrom, VerticalPositionAlign } = docx;
+                const { Document, Packer, Paragraph, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, PageBreak, TextRun, BorderStyle, ImageRun, VerticalAlign } = docx;
 
                 // Создаем название файла
                 const price = parseInt(data.contractPrice) || 0;
@@ -669,34 +809,26 @@
                                         new TableRow({
                                             children: [
                                                 new TableCell({
+                                                    verticalAlign: VerticalAlign.TOP,
                                                     children: [
                                                         new Paragraph({
+                                                            alignment: AlignmentType.LEFT,
+                                                            spacing: {
+                                                                before: safeParseInt(localStorage.getItem('signatureOffsetY'), 0, -100, 100) * 20, // Конвертируем в twips
+                                                                after: 0,
+                                                                left: safeParseInt(localStorage.getItem('signatureOffsetX'), 0, -100, 100) * 20, // Конвертируем в twips
+                                                                right: 0,
+                                                            },
                                                             children: [
                                                                 new TextRun({
                                                                     text: "Signature: ",
                                                                 }),
                                                                 new ImageRun({
-                                                                    data: window.loadedSignature.split(',')[1],
+                                                                    data: signatureData,
                                                                     transformation: {
-                                                                        width: 200,
-                                                                        height: 150,
-                                                                    },
-                                                                    floating: {
-                                                                        horizontalPosition: {
-                                                                            relative: HorizontalPositionRelativeFrom.TEXT,
-                                                                            align: HorizontalPositionAlign.LEFT,
-                                                                        },
-                                                                        verticalPosition: {
-                                                                            relative: VerticalPositionRelativeFrom.TEXT,
-                                                                            align: VerticalPositionAlign.TOP,
-                                                                        },
-                                                                        margins: {
-                                                                            top: 0,
-                                                                            bottom: 0,
-                                                                            left: 0,
-                                                                            right: 0,
-                                                                        },
-                                                                    },
+                                                                        width: safeParseInt(localStorage.getItem('signatureWidth'), 200, 50, 500),
+                                                                        height: safeParseInt(localStorage.getItem('signatureHeight'), 150, 30, 300),
+                                                                    }
                                                                 })
                                                             ],
                                                         })
@@ -748,32 +880,44 @@
         }
 
         // Функция для загрузки DOCX библиотеки
+        // Функция для безопасного парсинга чисел из localStorage
+        function safeParseInt(value, defaultValue, min = -Infinity, max = Infinity) {
+            const parsed = parseInt(value);
+            if (isNaN(parsed)) return defaultValue;
+            return Math.max(min, Math.min(max, parsed));
+        }
+
         async function loadDocxLibrary() {
-            try {
+            return new Promise((resolve, reject) => {
+                // Проверяем, не загружена ли уже библиотека
+                if (typeof docx !== 'undefined') {
+                    resolve();
+                    return;
+                }
+                
                 const script = document.createElement('script');
                 script.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.min.js';
                 script.onload = () => {
-                    // DOCX library loaded, user can try again
+                    console.log('✅ DOCX library loaded successfully');
+                    resolve();
                 };
                 script.onerror = () => {
-                    console.error('Failed to load DOCX library from cdnjs');
+                    console.error('❌ Failed to load DOCX library from cdnjs, trying alternative...');
                     // Пробуем альтернативный источник
                     const altScript = document.createElement('script');
                     altScript.src = 'https://unpkg.com/docx@7.8.2/build/index.js';
                     altScript.onload = () => {
-                        // DOCX library loaded from alternative source
+                        console.log('✅ DOCX library loaded from alternative source');
+                        resolve();
                     };
                     altScript.onerror = () => {
-                        console.error('Failed to load DOCX library from all sources');
-                        alert('Failed to load DOCX library. Please check your internet connection.');
+                        console.error('❌ Failed to load DOCX library from both sources');
+                        reject(new Error('Failed to load DOCX library'));
                     };
                     document.head.appendChild(altScript);
                 };
                 document.head.appendChild(script);
-            } catch (error) {
-                console.error('Error loading DOCX library:', error);
-                alert('Error loading DOCX library: ' + error.message);
-            }
+            });
         }
 
         // Инициализация при загрузке страницы
@@ -829,3 +973,4 @@
     </script>
 </body>
 </html>
+
